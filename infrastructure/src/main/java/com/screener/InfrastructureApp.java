@@ -10,7 +10,11 @@ public class InfrastructureApp {
     public static void main(final String[] args) {
         App app = new App();
 
-        new com.screener.InfrastructureStack(app, "InfrastructureStack", StackProps.builder()
+        Environment environment = Environment.builder()
+                .account("000000000000")
+                .region("eu-west-1")
+                .build();
+        new com.screener.InfrastructureStack(app, "InfrastructureStack", StackProps.builder().env(environment)
                 // If you don't specify 'env', this stack will be environment-agnostic.
                 // Account/Region-dependent features and context lookups will not work,
                 // but a single synthesized template can be deployed anywhere.

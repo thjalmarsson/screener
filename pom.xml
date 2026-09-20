@@ -20,6 +20,7 @@
 
     <modules>
         <module>infrastructure</module>
+        <module>services/stock-service</module>
     </modules>
 
 </project>

@@ -22,3 +22,9 @@ target/
 
 # LocalStack
 .localstack/
+
+services/stock-service/.mvn/
+services/stock-service/mvnw
+services/stock-service/mvnw.cmd
+services/stock-service/.gitattributes
+services/stock-service/.gitignore

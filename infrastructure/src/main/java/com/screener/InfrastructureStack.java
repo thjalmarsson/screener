@@ -1,6 +1,10 @@
 package com.screener;
 
 import software.amazon.awscdk.Duration;
+import software.amazon.awscdk.services.apigateway.LambdaIntegration;
+import software.amazon.awscdk.services.apigateway.LambdaIntegrationOptions;
+import software.amazon.awscdk.services.apigateway.Resource;
+import software.amazon.awscdk.services.apigateway.RestApi;
 import software.amazon.awscdk.services.dynamodb.*;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
@@ -63,5 +67,18 @@ public class InfrastructureStack extends Stack {
                 .build();
 
         stocksTable.grantReadData(stockFunction);
+
+        RestApi stockApi = RestApi.Builder
+                .create(this, "StockApi")
+                .restApiName("restApiName")
+                .build();
+
+        Resource stocksResource = stockApi.getRoot().addResource("stocks");
+        Resource screenResource = stocksResource.addResource("screen");
+
+        LambdaIntegration stockIntegration = new LambdaIntegration(
+                stockFunction, LambdaIntegrationOptions.builder().proxy(true).build());
+
+        screenResource.addMethod("POST", stockIntegration);
     }
 }

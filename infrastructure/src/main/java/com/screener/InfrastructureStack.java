@@ -1,6 +1,10 @@
 package com.screener;
 
+import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.services.dynamodb.*;
+import software.amazon.awscdk.services.lambda.Code;
+import software.amazon.awscdk.services.lambda.Function;
+import software.amazon.awscdk.services.lambda.Runtime;
 import software.constructs.Construct;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
@@ -50,6 +54,14 @@ public class InfrastructureStack extends Stack {
                         .projectionType(ProjectionType.ALL)
                         .build()
         );
-        
+
+        Function stockFunction = Function.Builder.create(this, "StockFunction")
+                .runtime(Runtime.JAVA_25)
+                .handler("com.screener.stocklambda.StockLambdaHandler::handleRequest")
+                .code(Code.fromAsset("../services/stock-lambda/target/stock-lambda-1.0-SNAPSHOT.jar"))
+                .timeout(Duration.seconds(15))
+                .build();
+
+        stocksTable.grantReadData(stockFunction);
     }
 }

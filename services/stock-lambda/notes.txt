@@ -1,0 +1,8 @@
+aws lambda invoke \
+  --function-name FUNCTION_NAME \
+  --payload '{"sortBy":"PE_RATIO","order":"ASC","limit":5}' \
+  --cli-binary-format raw-in-base64-out \
+  --profile localstack \
+  --endpoint-url=http://localhost:4566 \
+  --region eu-west-1 \
+  response.json

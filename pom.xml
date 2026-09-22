@@ -21,6 +21,7 @@
     <modules>
         <module>infrastructure</module>
         <module>services/stock-service</module>
+        <module>services/query-service</module>
     </modules>
 
 </project>

@@ -1,5 +1,6 @@
 package com.screener.queryservice.client;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -11,8 +12,9 @@ public class StockServiceClient {
 
     private final RestClient restClient;
 
-    public StockServiceClient(RestClient.Builder restClientBuilder) {
-        this.restClient = restClientBuilder.baseUrl("http://localhost:8080").build();
+    public StockServiceClient(RestClient.Builder restClientBuilder,
+                              @Value("${stock-service.base-url}") String stockServiceBaseUrl) {
+        this.restClient = restClientBuilder.baseUrl(stockServiceBaseUrl).build();
     }
 
     public List<StockResponse> screen(StockScreenRequest request) {

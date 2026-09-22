@@ -22,6 +22,7 @@
         <module>infrastructure</module>
         <module>services/stock-service</module>
         <module>services/query-service</module>
+        <module>services/stock-lambda</module>
     </modules>
 
 </project>

@@ -1,14 +1,12 @@
 package com.screener;
 
+import software.amazon.awscdk.services.dynamodb.*;
 import software.constructs.Construct;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
 // import software.amazon.awscdk.Duration;
 // import software.amazon.awscdk.services.sqs.Queue;
-import software.amazon.awscdk.services.dynamodb.Attribute;
-import software.amazon.awscdk.services.dynamodb.AttributeType;
-import software.amazon.awscdk.services.dynamodb.BillingMode;
-import software.amazon.awscdk.services.dynamodb.Table;
+
 
 public class InfrastructureStack extends Stack {
     public InfrastructureStack(final Construct scope, final String id) {
@@ -34,6 +32,24 @@ public class InfrastructureStack extends Stack {
                 )
                 .billingMode(BillingMode.PAY_PER_REQUEST)
                 .build();
+
+        stocksTable.addGlobalSecondaryIndex(
+                GlobalSecondaryIndexProps.builder()
+                        .indexName("PeRatioIndex")
+                        .partitionKey(Attribute.builder()
+                                .name("screeningGroup")
+                                .type(AttributeType.STRING)
+                                .build()
+                        )
+                        .sortKey(
+                                Attribute.builder()
+                                        .name("peRatio")
+                                        .type(AttributeType.NUMBER)
+                                        .build()
+                        )
+                        .projectionType(ProjectionType.ALL)
+                        .build()
+        );
         
     }
 }

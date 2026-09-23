@@ -1,0 +1,22 @@
+Perform ingestion:
+
+lstk aws sqs send-message \
+  --queue-url "http://sqs.eu-west-1.localhost.localstack.cloud:4566/000000000000/stock-update-queue" \
+  --message-body '{
+    "symbol":"AAPL",
+    "name":"Apple Inc.",
+    "price":250.50,
+    "peRatio":31.2,
+    "marketCap":3800000000000,
+    "sector":"Technology"
+  }' \
+  --region eu-west-1
+
+__________________________________________________________________________________
+
+CHeck ingestion took place:
+
+  lstk aws dynamodb get-item \
+    --table-name Stocks \
+    --key '{"symbol":{"S":"AAPL"}}' \
+    --region eu-west-1

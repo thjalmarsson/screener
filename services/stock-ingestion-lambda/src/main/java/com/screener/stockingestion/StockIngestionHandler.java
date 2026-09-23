@@ -2,6 +2,7 @@ package com.screener.stockingestion;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
+import com.amazonaws.services.lambda.runtime.events.SQSBatchResponse;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,7 +10,10 @@ import com.screener.stockingestion.model.StockUpdate;
 import com.screener.stockingestion.repository.StockRepository;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 
-public class StockIngestionHandler implements RequestHandler<SQSEvent, Void> {
+import java.util.ArrayList;
+import java.util.List;
+
+public class StockIngestionHandler implements RequestHandler<SQSEvent, SQSBatchResponse> {
 
     private final StockRepository stockRepository;
     private final ObjectMapper objectMapper;
@@ -21,7 +25,10 @@ public class StockIngestionHandler implements RequestHandler<SQSEvent, Void> {
     }
 
     @Override
-    public Void handleRequest(SQSEvent sqsEvent, Context context) {
+    public SQSBatchResponse handleRequest(SQSEvent sqsEvent, Context context) {
+        List<SQSBatchResponse.BatchItemFailure> failures = new ArrayList<>();
+
+        // TODO: Add multithreading
         for(SQSEvent.SQSMessage message : sqsEvent.getRecords()) {
             context.getLogger().log("Processing SQS message: " + message.getMessageId());
 
@@ -32,9 +39,12 @@ public class StockIngestionHandler implements RequestHandler<SQSEvent, Void> {
                 context.getLogger().log("Updated Stock:" + stockUpdate.symbol());
             } catch (Exception e) {
                 context.getLogger().log("Failed to procecss message with id: " + message.getMessageId() + ", withError:" + e.getMessage());
-                throw new RuntimeException(e);
+                failures.add(
+                        new SQSBatchResponse.BatchItemFailure(
+                                message.getMessageId()
+                        ));
             }
         }
-        return null;
+        return new SQSBatchResponse(failures);
     }
 }

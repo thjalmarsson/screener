@@ -1,0 +1,11 @@
+Trigger Lambda manually
+
+lstk aws lambda invoke \
+  --function-name InfrastructureStack-StockProducerFunctionC0A-ed0b1f84 \
+  --payload '{}' \
+  --region eu-west-1 \
+  producer-response.json
+{
+    "StatusCode": 200,
+    "ExecutedVersion": "$LATEST"
+}

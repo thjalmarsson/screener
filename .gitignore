@@ -33,3 +33,6 @@ services/query-service/mvnw
 services/query-service/mvnw.cmd
 services/query-service/.gitattributes
 services/query-service/.gitignore
+
+# TODO: FIx the frontend
+frontend/

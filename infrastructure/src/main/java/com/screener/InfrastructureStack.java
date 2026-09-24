@@ -10,6 +10,7 @@ import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
 import software.amazon.awscdk.services.lambda.eventsources.SqsEventSource;
+import software.amazon.awscdk.services.s3.Bucket;
 import software.amazon.awscdk.services.sqs.DeadLetterQueue;
 import software.amazon.awscdk.services.sqs.Queue;
 import software.constructs.Construct;
@@ -118,5 +119,10 @@ public class InfrastructureStack extends Stack {
                 .build();
 
         stockUpdateQueue.grantSendMessages(stockProducerFunction);
+
+        Bucket stockBucket = Bucket.Builder.create(this, "StockInputBucket")
+                .build();
+
+        stockBucket.grantRead(stockProducerFunction);
     }
 }

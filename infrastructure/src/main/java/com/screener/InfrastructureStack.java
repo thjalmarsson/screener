@@ -9,9 +9,14 @@ import software.amazon.awscdk.services.dynamodb.*;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
+import software.amazon.awscdk.services.lambda.eventsources.SqsEventSource;
+import software.amazon.awscdk.services.sqs.DeadLetterQueue;
+import software.amazon.awscdk.services.sqs.Queue;
 import software.constructs.Construct;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
+
+import java.util.Map;
 // import software.amazon.awscdk.Duration;
 // import software.amazon.awscdk.services.sqs.Queue;
 
@@ -80,5 +85,38 @@ public class InfrastructureStack extends Stack {
                 stockFunction, LambdaIntegrationOptions.builder().proxy(true).build());
 
         screenResource.addMethod("POST", stockIntegration);
+
+        Function stockIngestionFunction = Function.Builder.create(this, "StockIngestionFunction")
+                .runtime(Runtime.JAVA_25)
+                .handler("com.screener.stockingestion.StockIngestionHandler::handleRequest")
+                .code(Code.fromAsset("../services/stock-ingestion-lambda/target/stock-ingestion-lambda-1.0-SNAPSHOT.jar"))
+                .timeout(Duration.seconds(15))
+                .build();
+
+
+
+        Queue stockUpdateDlq = Queue.Builder
+                .create(this, "StockUpdateDlq")
+                .queueName("stock-update-dlq")
+                .build();
+
+        Queue stockUpdateQueue = Queue.Builder.create(this, "StockUpdateQueue")
+                .queueName("stock-update-queue")
+                .visibilityTimeout(Duration.seconds(30))
+                .deadLetterQueue(DeadLetterQueue.builder().maxReceiveCount(3).queue(stockUpdateDlq).build())
+                .build();
+
+        stocksTable.grantWriteData(stockIngestionFunction);
+        stockIngestionFunction.addEventSource(SqsEventSource.Builder.create(stockUpdateQueue).batchSize(5).build());
+
+        Function stockProducerFunction = Function.Builder.create(this, "StockProducerFunction")
+                .runtime(Runtime.JAVA_25)
+                .handler("com.screener.stockproducer.StockProducerHandler::handleRequest")
+                .code(Code.fromAsset("../services/stock-producer-lambda/target/stock-producer-lambda-1.0-SNAPSHOT.jar"))
+                .timeout(Duration.seconds(15))
+                .environment(Map.of("STOCK_UPDATE_QUEUE_URL", stockUpdateQueue.getQueueUrl()))
+                .build();
+
+        stockUpdateQueue.grantSendMessages(stockProducerFunction);
     }
 }

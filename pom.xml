@@ -36,6 +36,8 @@
         <module>infrastructure</module>
         <module>services/query-service</module>
         <module>services/stock-lambda</module>
+        <module>services/stock-ingestion-lambda</module>
+        <module>services/stock-producer-lambda</module>
     </modules>
 
 </project>

@@ -8,15 +8,19 @@ import software.amazon.awscdk.services.apigateway.RestApi;
 import software.amazon.awscdk.services.dynamodb.*;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
+import software.amazon.awscdk.services.lambda.IEventSource;
 import software.amazon.awscdk.services.lambda.Runtime;
+import software.amazon.awscdk.services.lambda.eventsources.S3EventSource;
 import software.amazon.awscdk.services.lambda.eventsources.SqsEventSource;
 import software.amazon.awscdk.services.s3.Bucket;
+import software.amazon.awscdk.services.s3.EventType;
 import software.amazon.awscdk.services.sqs.DeadLetterQueue;
 import software.amazon.awscdk.services.sqs.Queue;
 import software.constructs.Construct;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
 
+import java.util.List;
 import java.util.Map;
 // import software.amazon.awscdk.Duration;
 // import software.amazon.awscdk.services.sqs.Queue;
@@ -30,12 +34,7 @@ public class InfrastructureStack extends Stack {
     public InfrastructureStack(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
 
-        // The code that defines your stack goes here
-
-        // example resource
-        // final Queue queue = Queue.Builder.create(this, "InfrastructureQueue")
-        //         .visibilityTimeout(Duration.seconds(300))
-        //         .build();
+        // DynamoDB table for storing the querys.
         Table stocksTable = Table.Builder.create(this, "StocksTable")
                 .tableName("Stocks")
                 .partitionKey(
@@ -47,6 +46,8 @@ public class InfrastructureStack extends Stack {
                 .billingMode(BillingMode.PAY_PER_REQUEST)
                 .build();
 
+        // GSI: Creating to be able to get
+        // get stocks by peRatio instead of scanning.
         stocksTable.addGlobalSecondaryIndex(
                 GlobalSecondaryIndexProps.builder()
                         .indexName("PeRatioIndex")
@@ -65,6 +66,7 @@ public class InfrastructureStack extends Stack {
                         .build()
         );
 
+        // Function for retrieving stocks from the DynamoDB
         Function stockFunction = Function.Builder.create(this, "StockFunction")
                 .runtime(Runtime.JAVA_25)
                 .handler("com.screener.stocklambda.StockLambdaHandler::handleRequest")
@@ -74,6 +76,8 @@ public class InfrastructureStack extends Stack {
 
         stocksTable.grantReadData(stockFunction);
 
+
+        // Create the API for the stockLambda and its resources.
         RestApi stockApi = RestApi.Builder
                 .create(this, "StockApi")
                 .restApiName("restApiName")
@@ -87,6 +91,7 @@ public class InfrastructureStack extends Stack {
 
         screenResource.addMethod("POST", stockIntegration);
 
+        // Ingests into Dynamo
         Function stockIngestionFunction = Function.Builder.create(this, "StockIngestionFunction")
                 .runtime(Runtime.JAVA_25)
                 .handler("com.screener.stockingestion.StockIngestionHandler::handleRequest")
@@ -96,6 +101,7 @@ public class InfrastructureStack extends Stack {
 
 
 
+        // DLQ and SQS for the decoupling between ingestion/producer
         Queue stockUpdateDlq = Queue.Builder
                 .create(this, "StockUpdateDlq")
                 .queueName("stock-update-dlq")
@@ -107,9 +113,12 @@ public class InfrastructureStack extends Stack {
                 .deadLetterQueue(DeadLetterQueue.builder().maxReceiveCount(3).queue(stockUpdateDlq).build())
                 .build();
 
+        // Database permissions for ingestion lambda
         stocksTable.grantWriteData(stockIngestionFunction);
         stockIngestionFunction.addEventSource(SqsEventSource.Builder.create(stockUpdateQueue).batchSize(5).build());
 
+
+        // Read from S3
         Function stockProducerFunction = Function.Builder.create(this, "StockProducerFunction")
                 .runtime(Runtime.JAVA_25)
                 .handler("com.screener.stockproducer.StockProducerHandler::handleRequest")
@@ -124,5 +133,6 @@ public class InfrastructureStack extends Stack {
                 .build();
 
         stockBucket.grantRead(stockProducerFunction);
+        stockProducerFunction.addEventSource(S3EventSource.Builder.create(stockBucket).events(List.of(EventType.OBJECT_CREATED)).build());
     }
 }

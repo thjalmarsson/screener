@@ -9,7 +9,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.screener.stockingestion.model.StockUpdate;
 import com.screener.stockingestion.repository.StockRepository;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.regions.Region;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,9 +21,20 @@ public class StockIngestionHandler implements RequestHandler<SQSEvent, SQSBatchR
     private final ObjectMapper objectMapper;
 
     public StockIngestionHandler() {
-        DynamoDbClient dynamoDbClient = DynamoDbClient.create();
+        DynamoDbClient dynamoDbClient = createDynamoDbClient();
         this.stockRepository = new StockRepository(dynamoDbClient);
         this.objectMapper = new ObjectMapper();
+    }
+
+    private DynamoDbClient createDynamoDbClient() {
+        String endpoint = System.getenv("LOCALSTACK_ENDPOINT");
+        if (endpoint == null || endpoint.isBlank()) {
+            return DynamoDbClient.create();
+        }
+        return DynamoDbClient.builder()
+                .endpointOverride(URI.create(endpoint))
+                .region(Region.EU_WEST_1)
+                .build();
     }
 
     @Override

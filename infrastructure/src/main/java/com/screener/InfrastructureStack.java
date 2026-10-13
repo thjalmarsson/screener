@@ -1,10 +1,7 @@
 package com.screener;
 
 import software.amazon.awscdk.Duration;
-import software.amazon.awscdk.services.apigateway.LambdaIntegration;
-import software.amazon.awscdk.services.apigateway.LambdaIntegrationOptions;
-import software.amazon.awscdk.services.apigateway.Resource;
-import software.amazon.awscdk.services.apigateway.RestApi;
+import software.amazon.awscdk.services.apigateway.*;
 import software.amazon.awscdk.services.dynamodb.*;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
@@ -54,14 +51,26 @@ public class InfrastructureStack extends Stack {
                         .partitionKey(Attribute.builder()
                                 .name("screeningGroup")
                                 .type(AttributeType.STRING)
-                                .build()
-                        )
-                        .sortKey(
-                                Attribute.builder()
-                                        .name("peRatio")
-                                        .type(AttributeType.NUMBER)
-                                        .build()
-                        )
+                                .build())
+                        .sortKey(Attribute.builder()
+                                .name("peRatio")
+                                .type(AttributeType.NUMBER)
+                                .build())
+                        .projectionType(ProjectionType.ALL)
+                        .build()
+        );
+
+        stocksTable.addGlobalSecondaryIndex(
+                GlobalSecondaryIndexProps.builder()
+                        .indexName("MarketCapIndex")
+                        .partitionKey(Attribute.builder()
+                                .name("screeningGroup")
+                                .type(AttributeType.STRING)
+                                .build())
+                        .sortKey(Attribute.builder()
+                                .name("marketCap")
+                                .type(AttributeType.NUMBER)
+                                .build())
                         .projectionType(ProjectionType.ALL)
                         .build()
         );
@@ -72,6 +81,9 @@ public class InfrastructureStack extends Stack {
                 .handler("com.screener.stocklambda.StockLambdaHandler::handleRequest")
                 .code(Code.fromAsset("../services/stock-lambda/target/stock-lambda-1.0-SNAPSHOT.jar"))
                 .timeout(Duration.seconds(15))
+                .environment(Map.of(
+                        "LOCALSTACK_ENDPOINT", "http://host.docker.internal:4566"
+                ))
                 .build();
 
         stocksTable.grantReadData(stockFunction);
@@ -81,6 +93,7 @@ public class InfrastructureStack extends Stack {
         RestApi stockApi = RestApi.Builder
                 .create(this, "StockApi")
                 .restApiName("restApiName")
+                .deploy(false)
                 .build();
 
         Resource stocksResource = stockApi.getRoot().addResource("stocks");
@@ -91,12 +104,26 @@ public class InfrastructureStack extends Stack {
 
         screenResource.addMethod("POST", stockIntegration);
 
+        Deployment stockApiDeployment = Deployment.Builder
+                .create(this, "StockApiDeployment")
+                .api(stockApi)
+                .build();
+
+        Stage stockApiStage = Stage.Builder
+                .create(this, "StockApiStage")
+                .deployment(stockApiDeployment)
+                .stageName("prod")
+                .build();
+
         // Ingests into Dynamo
         Function stockIngestionFunction = Function.Builder.create(this, "StockIngestionFunction")
                 .runtime(Runtime.JAVA_25)
                 .handler("com.screener.stockingestion.StockIngestionHandler::handleRequest")
                 .code(Code.fromAsset("../services/stock-ingestion-lambda/target/stock-ingestion-lambda-1.0-SNAPSHOT.jar"))
                 .timeout(Duration.seconds(15))
+                .environment(Map.of(
+                        "LOCALSTACK_ENDPOINT", "http://host.docker.internal:4566"
+                ))
                 .build();
 
 
@@ -124,7 +151,10 @@ public class InfrastructureStack extends Stack {
                 .handler("com.screener.stockproducer.StockProducerHandler::handleRequest")
                 .code(Code.fromAsset("../services/stock-producer-lambda/target/stock-producer-lambda-1.0-SNAPSHOT.jar"))
                 .timeout(Duration.seconds(15))
-                .environment(Map.of("STOCK_UPDATE_QUEUE_URL", stockUpdateQueue.getQueueUrl()))
+                .environment(Map.of(
+                        "LOCALSTACK_ENDPOINT", "http://host.docker.internal:4566",
+                        "STOCK_UPDATE_QUEUE_URL", stockUpdateQueue.getQueueUrl()
+                ))
                 .build();
 
         stockUpdateQueue.grantSendMessages(stockProducerFunction);

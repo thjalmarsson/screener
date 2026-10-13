@@ -10,7 +10,9 @@ import com.screener.stockproducer.model.StockUpdate;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
+import software.amazon.awssdk.regions.Region;
 
+import java.net.URI;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -23,8 +25,22 @@ public class StockProducerHandler implements RequestHandler<S3Event, Void> {
     private final ObjectMapper objectMapper;
 
     public StockProducerHandler() {
-        sqsClient = SqsClient.create();
-        s3Client = S3Client.create();
+        String endpoint = System.getenv("LOCALSTACK_ENDPOINT");
+        if (endpoint == null || endpoint.isBlank()) {
+            sqsClient = SqsClient.create();
+            s3Client = S3Client.create();
+        } else {
+            URI localstackEndpoint = URI.create(endpoint);
+            sqsClient = SqsClient.builder()
+                    .endpointOverride(localstackEndpoint)
+                    .region(Region.EU_WEST_1)
+                    .build();
+            s3Client = S3Client.builder()
+                    .endpointOverride(localstackEndpoint)
+                    .region(Region.EU_WEST_1)
+                    .forcePathStyle(true)
+                    .build();
+        }
         objectMapper = new ObjectMapper();
         queueUrl = System.getenv("STOCK_UPDATE_QUEUE_URL");
     }

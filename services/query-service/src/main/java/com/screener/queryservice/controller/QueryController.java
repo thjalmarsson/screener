@@ -27,7 +27,6 @@ public class QueryController {
 
     @PostMapping
     public ResponseEntity<List<StockResponse>> query(@RequestBody QueryRequest queryRequest) {
-        log.debug("Received query:{}", queryRequest.query());
         List<StockResponse> stockResponsesList = queryService.query(queryRequest.query());
         return ResponseEntity.ok().body(stockResponsesList);
     }

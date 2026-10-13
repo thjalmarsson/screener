@@ -18,8 +18,33 @@ public class StockRepository {
         this.dynamoDbClient = dynamoDbClient;
     }
 
-    public List<Stock> findByPERatios(int limit, boolean ascending) {
+    public List<Stock> findStocks(int limit, boolean ascending, String indexName) {
 
+        Map<String, AttributeValue> expressionValues = Map.of(
+                ":group",
+                AttributeValue.builder()
+                        .s("ALL")
+                        .build()
+        );
+
+        QueryRequest request = QueryRequest.builder()
+                .tableName("Stocks")
+                .indexName(indexName)
+                .keyConditionExpression("screeningGroup = :group")
+                .expressionAttributeValues(expressionValues)
+                .scanIndexForward(ascending)
+                .limit(limit)
+                .build();
+
+        QueryResponse response = dynamoDbClient.query(request);
+
+        return response.items()
+                .stream()
+                .map(this::toStock)
+                .toList();
+    }
+
+    public List<Stock> findByMarketCap(int limit, boolean ascending) {
         Map<String, AttributeValue> expressionValues = Map.of(
                 ":group",
                 AttributeValue.builder()

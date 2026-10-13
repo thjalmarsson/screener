@@ -46,8 +46,17 @@ public class StockProducerHandler implements RequestHandler<S3Event, Void> {
     }
 
     @Override
-    //public Void handleRequest(Map<String, Object> event, Context context) {
     public Void handleRequest(S3Event event, Context context) {
+        String requestId = context.getAwsRequestId();
+        long startedAt = System.currentTimeMillis();
+        int filesProcessed = 0;
+        int stocksPublished = 0;
+
+        log(context, String.format(
+                "{\"event\":\"s3_file_processing_started\",\"request_id\":\"%s\",\"file_count\":%d}",
+                requestId,
+                event.getRecords().size()
+        ));
         for (S3EventNotification.S3EventNotificationRecord record : event.getRecords()) {
             String bucket = record.getS3().getBucket().getName();
             String key = record.getS3().getObject().getUrlDecodedKey();
@@ -60,6 +69,10 @@ public class StockProducerHandler implements RequestHandler<S3Event, Void> {
                         StockUpdate[].class
                 );
             } catch (JsonProcessingException e) {
+                log(context, String.format(
+                        "{\"event\":\"s3_file_processing_failed\",\"request_id\":\"%s\",\"error_type\":%s}",
+                        requestId, "JsonProcessingException.StockUpdate[]"
+                ));
                 throw new RuntimeException(e);
             }
 
@@ -67,15 +80,38 @@ public class StockProducerHandler implements RequestHandler<S3Event, Void> {
                 try {
                     String body = objectMapper.writeValueAsString(stockUpdate);
                     sqsClient.sendMessage(request -> request.queueUrl(queueUrl).messageBody(body));
-                    context.getLogger().log("Published message with symbol: " + stockUpdate.symbol());
+                    stocksPublished++;
+                    log(context, String.format(
+                            "{\"event\":\"s3_file_processing_published\",\"request_id\":\"%s\",\"symbol\":%s}",
+                            requestId, stockUpdate.symbol()
+                    ));
                 } catch (JsonProcessingException e) {
+                    log(context, String.format(
+                            "{\"event\":\"s3_file_processing_failed\",\"request_id\":\"%s\",\"error_type\":%s}",
+                            requestId, "JsonProcessingException"
+                    ));
                     throw new RuntimeException(e);
                 }
 
             }
-
-
+            filesProcessed++;
         }
+        long executionTime = System.currentTimeMillis() - startedAt;
+        log(context, String.format(
+                "{\"event\":\"s3_file_processing_completed\"," +
+                        "\"request_id\":\"%s\"," +
+                        "\"execution_time_ms\":%d," +
+                        "\"files_processed\":%d," +
+                        "\"stocks_published\":%d}",
+                requestId,
+                executionTime,
+                filesProcessed,
+                stocksPublished
+        ));
         return null;
+    }
+
+    private void log(Context context, String message) {
+        context.getLogger().log(message + System.lineSeparator());
     }
 }

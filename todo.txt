@@ -1,0 +1,4 @@
+Monitoring:
+ - Updated logging in producer lambda [DONE]
+ - Add correlation ID so it is easy to trace requests through the ingestion pipe
+ - Do the same for the rest of the lambdas.

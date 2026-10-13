@@ -5,10 +5,10 @@ flowchart LR
     Queue --> Ingestion[Ingestion Lambda]
     Ingestion --> DynamoDB[(DynamoDB)]
 
-    Client[Client] --> Query[Query Service]
-    Query --> Ollama[Ollama]
-    Query --> OpenAI[OpenAI]
-    Query --> API[API Gateway]
-    API --> Stock[Stock Lambda]
-    Stock --> DynamoDB
+    Client[Client] <--> Query[Query Service]
+    Query <--> Ollama[Ollama]
+    Query <--> OpenAI[OpenAI]
+    Query <--> API[API Gateway]
+    API <--> Stock[Stock Lambda]
+    Stock <--> DynamoDB
 ```

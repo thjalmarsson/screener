@@ -11,7 +11,9 @@ import com.screener.stocklambda.model.StockScreenRequest;
 import com.screener.stocklambda.repository.StockRepository;
 import com.screener.stocklambda.service.StockService;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.regions.Region;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
@@ -22,10 +24,21 @@ public class StockLambdaHandler implements RequestHandler<APIGatewayProxyRequest
     private final Map<String, String> headers = Map.of("Content-Type", "application/json");
 
     public StockLambdaHandler() {
-        DynamoDbClient dynamoDbClient = DynamoDbClient.create();
+        DynamoDbClient dynamoDbClient = createDynamoDbClient();
         StockRepository stockRepository = new StockRepository(dynamoDbClient);
         this.stockService = new StockService(stockRepository);
         this.objectMapper = new ObjectMapper();
+    }
+
+    private DynamoDbClient createDynamoDbClient() {
+        String endpoint = System.getenv("LOCALSTACK_ENDPOINT");
+        if (endpoint == null || endpoint.isBlank()) {
+            return DynamoDbClient.create();
+        }
+        return DynamoDbClient.builder()
+                .endpointOverride(URI.create(endpoint))
+                .region(Region.EU_WEST_1)
+                .build();
     }
 
     @Override

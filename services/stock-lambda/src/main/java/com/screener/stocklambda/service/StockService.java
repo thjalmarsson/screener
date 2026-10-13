@@ -12,18 +12,28 @@ import java.util.List;
 public class StockService {
 
     private final StockRepository stockRepository;
+    private static final String PE_RATIO_INDEX = "PeRatioIndex";
+    private static final String MARKET_CAP_INDEX = "MarketCapIndex";
 
     public StockService(StockRepository stockRepository) {
         this.stockRepository = stockRepository;
     }
 
     public List<Stock> screen(StockScreenRequest request) {
+        boolean ascending = request.sortOrder() == SortOrder.ASC;
         if (request.sortBy() == SortField.PE_RATIO) {
-            boolean ascending = request.sortOrder() == SortOrder.ASC;
-
-            return stockRepository.findByPERatios(
+            return stockRepository.findStocks(
                     request.limit(),
-                    ascending
+                    ascending,
+                    PE_RATIO_INDEX
+            );
+        }
+
+        if (request.sortBy() == SortField.MARKET_CAP) {
+            return stockRepository.findStocks(
+                    request.limit(),
+                    ascending,
+                    MARKET_CAP_INDEX
             );
         }
 

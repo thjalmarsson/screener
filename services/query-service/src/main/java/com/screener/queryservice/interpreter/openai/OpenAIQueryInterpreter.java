@@ -9,14 +9,19 @@ import com.openai.models.responses.StructuredResponseCreateParams;
 import com.screener.queryservice.interpreter.QueryInterpretation;
 import com.screener.queryservice.interpreter.QueryInterpreter;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 @Component
+@ConditionalOnProperty(
+        prefix = "query.interpreter",
+        name = "provider",
+        havingValue = "openai"
+)
 public class OpenAIQueryInterpreter implements QueryInterpreter {
 
     private final OpenAIClient client;
-    private final ObjectMapper objectMapper;
 
     private static final String SYSTEM_PROMPT = """
         You interpret natural-language stock screening requests.
@@ -40,8 +45,7 @@ public class OpenAIQueryInterpreter implements QueryInterpreter {
         - sortBy, sortOrder and limit must be null
         """;
 
-    public OpenAIQueryInterpreter(ObjectMapper objectMapper, @Value("${openai.api-key}") String apiKey) {
-        this.objectMapper = objectMapper;
+    public OpenAIQueryInterpreter(@Value("${openai.api-key}") String apiKey) {
         this.client = OpenAIOkHttpClient.builder()
                 .apiKey(apiKey)
                 .build();

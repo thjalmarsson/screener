@@ -225,3 +225,20 @@ Or if using curl: <br/>
     }
     ]
     }'
+
+### Update URL
+```sh
+API_ID=$(aws --profile localstack \
+--endpoint-url http://localhost:4566 \
+--region eu-west-1 \
+cloudformation list-stack-resources \
+--stack-name InfrastructureStack \
+--query "StackResourceSummaries[?ResourceType=='AWS::ApiGateway::RestApi'].PhysicalResourceId | [0]" \
+--output text)
+```
+```sh
+export STOCK_SERVICE_BASE_URL="http://localhost:4566/restapis/$API_ID/prod/_user_request_"
+```
+```sh
+mvn spring-boot:run
+```

@@ -2,6 +2,7 @@ package com.screener.queryservice.interpreter.ollama;
 
 import com.screener.queryservice.interpreter.QueryInterpretation;
 import com.screener.queryservice.interpreter.QueryInterpreter;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.ObjectMapper;
@@ -11,6 +12,12 @@ import java.util.List;
 import java.util.Map;
 
 @Component
+@ConditionalOnProperty(
+        prefix = "query.interpreter",
+        name = "provider",
+        havingValue = "ollama",
+        matchIfMissing = true
+)
 public class OllamaQueryInterpreter implements QueryInterpreter {
 
     private static final String SYSTEM_PROMPT = """

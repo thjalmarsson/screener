@@ -4,9 +4,8 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.SQSBatchResponse;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.screener.stockingestion.model.StockUpdate;
+import com.screener.stockingestion.model.StockMessage;
 import com.screener.stockingestion.repository.StockRepository;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.regions.Region;
@@ -40,24 +39,29 @@ public class StockIngestionHandler implements RequestHandler<SQSEvent, SQSBatchR
     @Override
     public SQSBatchResponse handleRequest(SQSEvent sqsEvent, Context context) {
         List<SQSBatchResponse.BatchItemFailure> failures = new ArrayList<>();
-
+        int successfullyUpdated = 0;
         // TODO: Add multithreading
         for(SQSEvent.SQSMessage message : sqsEvent.getRecords()) {
-            context.getLogger().log("Processing SQS message: " + message.getMessageId());
+            log(context, String.format("{\"event\":\"processing_sqs_event\", \"sqsEventId: \"%s\"}", message.getMessageId()));
 
-            //warp in try/Catch
             try {
-                StockUpdate stockUpdate = objectMapper.readValue(message.getBody(), StockUpdate.class);
-                stockRepository.save(stockUpdate);
-                context.getLogger().log("Updated Stock:" + stockUpdate.symbol());
+                StockMessage stockMessage = objectMapper.readValue(message.getBody(), StockMessage.class);
+                stockRepository.save(stockMessage.stockUpdate());
+                log(context, String.format("{\"event\":\"published_to_dynamodb\", \"traceId\":\"%s\", \"messageId\":\"%s\"}", stockMessage.tracingId(), message.getMessageId()));
+                successfullyUpdated++;
             } catch (Exception e) {
-                context.getLogger().log("Failed to procecss message with id: " + message.getMessageId() + ", withError:" + e.getMessage());
+                log(context, String.format("{\"event\":\"published_to_dynamodb_failure\", \"traceId\":\"%s\"}", message.getMessageId()));
                 failures.add(
                         new SQSBatchResponse.BatchItemFailure(
                                 message.getMessageId()
                         ));
             }
         }
+        log(context, String.format("{\"event\":\"processing_sqs_event_finished\", \"success\":\"%d\", \"failures\":\"%d\"}", successfullyUpdated, failures.size()));
         return new SQSBatchResponse(failures);
+    }
+
+    private void log(Context context, String message) {
+        context.getLogger().log(message + System.lineSeparator());
     }
 }

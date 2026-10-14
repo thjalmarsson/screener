@@ -6,6 +6,7 @@ import com.amazonaws.services.lambda.runtime.events.S3Event;
 import com.amazonaws.services.lambda.runtime.events.models.s3.S3EventNotification;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.screener.stockproducer.model.StockMessage;
 import com.screener.stockproducer.model.StockUpdate;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.sqs.SqsClient;
@@ -76,14 +77,14 @@ public class StockProducerHandler implements RequestHandler<S3Event, Void> {
                 throw new RuntimeException(e);
             }
 
-            for (StockUpdate stockUpdate : stocks) {
+            for (int i = 0; i < stocks.length; i++) {
                 try {
-                    String body = objectMapper.writeValueAsString(stockUpdate);
+                    String body = objectMapper.writeValueAsString(new StockMessage(stocks[i], createTraceId(requestId, stocks[i].symbol(), i)));
                     sqsClient.sendMessage(request -> request.queueUrl(queueUrl).messageBody(body));
                     stocksPublished++;
                     log(context, String.format(
-                            "{\"event\":\"s3_file_processing_published\",\"request_id\":\"%s\",\"symbol\":%s}",
-                            requestId, stockUpdate.symbol()
+                            "{\"event\":\"s3_file_processing_published\",\"request_id\":\"%s\",\"symbol\":\"%s\", \"tracing_id:\"%s\"}",
+                            requestId, createTraceId(requestId, stocks[i].symbol(), i)
                     ));
                 } catch (JsonProcessingException e) {
                     log(context, String.format(
@@ -113,5 +114,13 @@ public class StockProducerHandler implements RequestHandler<S3Event, Void> {
 
     private void log(Context context, String message) {
         context.getLogger().log(message + System.lineSeparator());
+    }
+
+    /*
+    * Creates traceId so we can trace the requests for the entire
+    * ingestion flow.
+    * */
+    private String createTraceId(String requestId, String symbol, int index) {
+        return String.format("%s-%s-%d", requestId, symbol, index);
     }
 }

@@ -1,4 +1,6 @@
 Monitoring:
  - Updated logging in producer lambda [DONE]
- - Add correlation ID so it is easy to trace requests through the ingestion pipe
+ - Add correlation ID so it is easy to trace requests through the ingestion pipe [Done] -> Note: Modified StockUpdate to StockMessage
  - Do the same for the rest of the lambdas.
+    - Ingestion Lambda [Done]
+    - Stock Lambda []

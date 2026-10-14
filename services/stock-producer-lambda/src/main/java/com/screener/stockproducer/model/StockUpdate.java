@@ -8,7 +8,8 @@ public record StockUpdate(
         BigDecimal price,
         BigDecimal peRatio,
         BigDecimal marketCap,
-        String sector
+        String sector,
+        String correlationId
 ) {
 }
 
